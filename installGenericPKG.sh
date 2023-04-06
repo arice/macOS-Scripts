@@ -3,7 +3,7 @@
 #set -x
 #verboseMode=1
 
-scriptVersion="v2.2.1"
+scriptVersion="v2.2.2"
 
 ##Written by Trevor Sysock (aka @bigmacadmin) at Second Son Consulting Inc.
 #
@@ -72,6 +72,10 @@ expectedTeamID=""
 #MD5 value is optional, but recommended. If not in use, this should read: expectedMD5=""
 #Get this by running this command against your package: md5 -q /path/to/package.pkg
 expectedMD5=""
+
+#Base64-encoded HTTP Auth credentials. Note: Base64 is a two-way algorithm and this is not particularly secure!
+#Get this by running this command: echo -n "user:password" | base64
+httpAuth=""
 
 ######################################
 #
@@ -142,6 +146,10 @@ function preinstall_summary_report()
 	echo "Location Type: $pkgLocationType"
 	echo "Expected MD5 is: $expectedMD5"
 	echo "Expected TeamID is: $expectedTeamID"
+	if [ ! -z "$authCurl" ]; then
+	    echo "HTTP Authorization will be used"
+	fi
+	
 	#If there is no TeamID and no MD5 verification configured print a warning
 	if [ -z "$expectedTeamID" ] && [ -z "$expectedMD5" ]; then
 		echo "**WARNING: No verification of the PKG before it is installed. Provide an MD5 or TeamID for better security and stability.**"
@@ -155,7 +163,7 @@ function download_pkg()
 	if [ "$pkgLocationType" = "url" ]; then
 		pkgInstallerPath="$tmpDir"/"$nameOfInstall".pkg
 		#Download installer to tmp folder
-		curl -LJs "$pathToPKG" -o "$pkgInstallerPath"
+		curl -H 'Authorization:Basic YWFtdW5raTplZ2FuNklOUk9BRDhjb250cmE0dXBzdGFpcnM0cnVtYmxl' -LJs "$pathToPKG" -o "$pkgInstallerPath"
 		downloadResult=$?
 		#Verify curl exited with 0
 		if [ "$downloadResult" != 0 ]; then
@@ -253,6 +261,12 @@ else
 	#There appears to be something wrong with the validation input, exit with an error
 	cleanup_and_exit 1 "TeamID or MD5 passed at command line appear to be invalid. Expecting 10 characters for TeamID or 32 for MD5."
 fi
+
+# set up the curl arguments for HTTP Auth
+if [ ! -z "$httpAuth" ]; then
+    authCurl="-H 'Authorization:Basic $httpAuth'"
+fi
+    
 
 ##########################
 # Script Starts Here	#
